@@ -17,16 +17,23 @@
     input[type=number]{text-align:center;font-weight:700}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     button{min-height:46px;border:1px solid var(--line);border-radius:11px;background:#fff;padding:10px 14px;font-size:15px;font-weight:700;color:var(--text)}
     button.primary{background:var(--accent);border-color:var(--accent);color:#fff;flex:1}button:disabled{opacity:.45}.msg{min-height:20px;margin-top:8px;font-size:13px}
-    .tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:680px;font-size:14px;text-align:center}th,td{border:1px solid var(--line);padding:9px 5px;white-space:nowrap}thead th{background:#f1f4f2}tfoot td{font-weight:800;background:var(--accent2)}
+    .tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;table-layout:fixed;font-size:12px;text-align:center}th,td{border:1px solid var(--line);padding:8px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}thead th{background:#f1f4f2}tfoot td{font-weight:800;background:var(--accent2)}
     .settle{display:grid;gap:7px}.settle div{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-weight:700}
     .net>div{background:var(--accent2);border-radius:11px;padding:10px;text-align:center}.net small{display:block;color:var(--muted)}.net b{font-size:20px}
     .danger{color:var(--danger)}.foot{font-size:12px;color:var(--muted);text-align:center;padding:3px 0 12px}
-    @media(max-width:480px){.wrap{padding:9px}.card{padding:11px}.entry{gap:5px}.winner{padding:6px}button{padding:9px}.scorelabel{font-size:11px}}
+    @media(max-width:480px){
+.wrap{padding:7px}.card{padding:10px;border-radius:14px}.entry{gap:4px}.winner{padding:5px}
+button{padding:8px}.scorelabel{font-size:11px}
+.tablewrap{overflow-x:visible}
+table{min-width:0!important;font-size:10.5px}
+th,td{padding:7px 1px;letter-spacing:-.3px}
+.gameno{width:42px}
+}
   </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🀄 3인 고스톱 점수판</h1>
+  <h1>🀄 3인 고스톱 점수판</h1><div class="muted" style="margin:-7px 0 10px">승자 점수만 입력하면 상대 점수·누적·상계가 자동 계산됩니다.</div>
 
   <section class="card">
     <h2>참가자</h2>
@@ -86,9 +93,9 @@
   function totals(){const t=Array(6).fill(0);games.forEach(g=>g.forEach((v,i)=>t[i]+=Number(v)||0));return t}
   function render(){
     buildEntry();
-    head.innerHTML='<tr><th rowspan="2">게임</th><th colspan="2">'+esc(nm(0))+'</th><th colspan="2">'+esc(nm(1))+'</th><th colspan="2">'+esc(nm(2))+'</th></tr><tr><th>'+esc(nm(1))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(1))+'</th></tr>';
+    head.innerHTML='<tr><th rowspan="2" class="gameno">게임</th><th colspan="2">'+esc(nm(0))+'</th><th colspan="2">'+esc(nm(1))+'</th><th colspan="2">'+esc(nm(2))+'</th></tr><tr><th>'+esc(nm(1))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(1))+'</th></tr>';
     body.innerHTML=games.length?games.map((g,k)=>'<tr><td>'+(k+1)+'</td>'+g.map(v=>'<td>'+(v?fmt(v):"")+'</td>').join("")+'</tr>').join(""):'<tr><td colspan="7" class="muted">아직 기록이 없습니다.</td></tr>';
-    const t=totals(); foot.innerHTML='<tr><td>누적</td>'+t.map(v=>'<td>'+fmt(v)+'</td>').join("")+'</tr>';
+    const t=totals(); foot.innerHTML='<tr><td class="gameno">누적</td>'+t.map(v=>'<td>'+fmt(v)+'</td>').join("")+'</tr>';
     const rel=[[0,1,0],[0,2,1],[1,2,3]];
     settle.innerHTML=rel.map(([a,b,ix])=>{const v=t[ix];return "<div>"+(v===0?esc(nm(a))+" ↔ "+esc(nm(b))+" : 정산 없음":v>0?esc(nm(b))+" → "+esc(nm(a))+" : "+v+"점":esc(nm(a))+" → "+esc(nm(b))+" : "+Math.abs(v)+"점")+"</div>"}).join("");
     const n=[t[0]+t[1],t[2]+t[3],t[4]+t[5]];
