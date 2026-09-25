@@ -33,6 +33,12 @@ table{min-width:0!important;font-size:13px}
 th,td{padding:9px 1px;letter-spacing:-.4px}
 .gameno{width:42px}
 }
+  
+    .archiveRow{display:grid;grid-template-columns:92px 1fr auto;gap:8px;align-items:center;border-top:1px solid var(--line);padding:10px 0;font-size:15px}
+    .archiveScores{display:flex;gap:8px;flex-wrap:wrap}
+    .archiveScores b{white-space:nowrap}
+    .archiveRow button{min-height:38px;padding:5px 9px;font-size:14px}
+    @media(max-width:480px){.archiveRow{grid-template-columns:78px 1fr auto;font-size:14px}.archiveScores{gap:4px 8px}}
   </style>
 </head>
 <body>
@@ -71,7 +77,15 @@ th,td{padding:9px 1px;letter-spacing:-.4px}
     <div id="net" class="net" style="margin-top:10px"></div>
     <div class="actions"><button id="reset" type="button" class="danger" disabled>전체 기록 초기화</button></div>
   </section>
-  <div class="foot">게임 기록과 참가자 이름은 이 기기의 브라우저에 자동 저장됩니다.</div>
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+      <h2>게임 결과 보관함</h2>
+      <button id="archiveSave" type="button">최종 결과 저장</button>
+    </div>
+    <div class="muted">날짜, 참가자 이름, 최종 점수만 저장합니다.</div>
+    <div id="archiveList" style="margin-top:10px"></div>
+  </section>
+  <div class="foot">게임 기록·참가자 이름·최종 결과는 이 기기의 브라우저에 자동 저장됩니다.</div>
 </div>
 
 <script>
@@ -79,12 +93,13 @@ th,td{padding:9px 1px;letter-spacing:-.4px}
   const $=s=>document.querySelector(s), names=[...document.querySelectorAll("[data-name]")];
   const entry=$("#entry"), head=$("#head"), body=$("#body"), foot=$("#foot"), settle=$("#settle"), net=$("#net"), msg=$("#msg"), round=$("#round"), save=$("#save"), undo=$("#undo"), reset=$("#reset");
   const pairs=[[0,1],[0,2],[1,0],[1,2],[2,0],[2,1]];
-  let games=[];
-  const KEY="gostop3-score-v1", NAMEKEY="gostop3-names-v1";
+  let games=[], archives=[];
+  const KEY="gostop3-score-v1", NAMEKEY="gostop3-names-v1", ARCHIVEKEY="gostop3-archives-v1";
+  const archiveSave=$("#archiveSave"), archiveList=$("#archiveList");
   const nm=i=>names[i].value.trim()||["나","아내","아들"][i];
   const fmt=v=>v===0?"0":(v>0?"+":"")+v;
-  function persist(){try{localStorage.setItem(KEY,JSON.stringify(games));localStorage.setItem(NAMEKEY,JSON.stringify(names.map(x=>x.value)))}catch(e){}}
-  function load(){try{const g=JSON.parse(localStorage.getItem(KEY)||"[]"),n=JSON.parse(localStorage.getItem(NAMEKEY)||"null");if(Array.isArray(g))games=g;if(Array.isArray(n)&&n.length===3)n.forEach((v,i)=>names[i].value=String(v||""))}catch(e){games=[]}}
+  function persist(){try{localStorage.setItem(KEY,JSON.stringify(games));localStorage.setItem(NAMEKEY,JSON.stringify(names.map(x=>x.value)));localStorage.setItem(ARCHIVEKEY,JSON.stringify(archives))}catch(e){}}
+  function load(){try{const g=JSON.parse(localStorage.getItem(KEY)||"[]"),n=JSON.parse(localStorage.getItem(NAMEKEY)||"null");if(Array.isArray(g))games=g;if(Array.isArray(n)&&n.length===3)n.forEach((v,i)=>names[i].value=String(v||""));const a=JSON.parse(localStorage.getItem(ARCHIVEKEY)||"[]");if(Array.isArray(a))archives=a}catch(e){games=[];archives=[]}}
   function buildEntry(){
     entry.innerHTML="";
     for(let w=0;w<3;w++){
@@ -95,6 +110,11 @@ th,td{padding:9px 1px;letter-spacing:-.4px}
   }
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
   function totals(){const t=Array(6).fill(0);games.forEach(g=>g.forEach((v,i)=>t[i]+=Number(v)||0));return t}
+  function renderArchive(){
+    if(!archives.length){archiveList.innerHTML='<div class="muted">저장된 최종 결과가 없습니다.</div>';return}
+    archiveList.innerHTML=archives.map((a,i)=>'<div class="archiveRow"><b>'+esc(a.date)+'</b><div class="archiveScores">'+a.names.map((n,j)=>'<b>'+esc(n)+' '+fmt(a.scores[j])+'</b>').join('')+'</div><button type="button" data-del="'+i+'" class="danger">삭제</button></div>').join("");
+    archiveList.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{const i=Number(b.dataset.del);if(confirm("이 최종 결과를 삭제하시겠습니까?")){archives.splice(i,1);persist();renderArchive()}}));
+  }
   function render(){
     buildEntry();
     head.innerHTML='<tr><th rowspan="2" class="gameno">게임</th><th colspan="2">'+esc(nm(0))+'</th><th colspan="2">'+esc(nm(1))+'</th><th colspan="2">'+esc(nm(2))+'</th></tr><tr><th>'+esc(nm(1))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(2))+'</th><th>'+esc(nm(0))+'</th><th>'+esc(nm(1))+'</th></tr>';
@@ -104,7 +124,7 @@ th,td{padding:9px 1px;letter-spacing:-.4px}
     settle.innerHTML=rel.map(([a,b,ix])=>{const v=t[ix];return "<div>"+(v===0?esc(nm(a))+" ↔ "+esc(nm(b))+" : 정산 없음":v>0?esc(nm(b))+" → "+esc(nm(a))+" : "+v+"점":esc(nm(a))+" → "+esc(nm(b))+" : "+Math.abs(v)+"점")+"</div>"}).join("");
     const n=[t[0]+t[1],t[2]+t[3],t[4]+t[5]];
     net.innerHTML=n.map((v,i)=>'<div><small>'+esc(nm(i))+' 순점수</small><b>'+fmt(v)+'</b></div>').join("");
-    round.textContent=(games.length+1)+"게임"; undo.disabled=!games.length; reset.disabled=!games.length; save.disabled=false; persist();
+    round.textContent=(games.length+1)+"게임"; undo.disabled=!games.length; reset.disabled=!games.length; archiveSave.disabled=!games.length; save.disabled=false; renderArchive(); persist();
   }
   save.addEventListener("click",()=>{
     const ins=[...entry.querySelectorAll('input[type="number"]')], active=ins.filter(x=>Number(x.value)>0);
@@ -117,6 +137,13 @@ th,td{padding:9px 1px;letter-spacing:-.4px}
   });
   undo.addEventListener("click",()=>{if(games.length){games.pop();msg.textContent="마지막 게임을 취소했습니다.";render()}});
   reset.addEventListener("click",()=>{if(games.length&&confirm("모든 게임 기록을 지우시겠습니까?")){games=[];msg.textContent="모든 기록을 초기화했습니다.";render()}});
+  archiveSave.addEventListener("click",()=>{
+    if(!games.length)return;
+    const t=totals(), scores=[t[0]+t[1],t[2]+t[3],t[4]+t[5]];
+    const d=new Date(), date=d.getFullYear()+"." + String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0");
+    archives.unshift({date,names:[nm(0),nm(1),nm(2)],scores});
+    persist();renderArchive();msg.textContent="오늘 최종 결과를 저장했습니다.";
+  });
   names.forEach(x=>x.addEventListener("change",render));
   load(); render();
 })();
